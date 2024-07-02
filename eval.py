@@ -17,9 +17,17 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # Dataset and model selection
-    parser.add_argument("--dataset", default="amazon", choices=['amazon', 'prime', 'mag'])
-    parser.add_argument("--model", default="VSS", choices=["VSS", "MultiVSS", "LLMReranker"])
-    parser.add_argument("--split", default="test", choices=["train", "val", "test", "human_generated_eval"])
+    parser.add_argument(
+        "--dataset", default="amazon", choices=["amazon", "prime", "mag"]
+    )
+    parser.add_argument(
+        "--model", default="VSS", choices=["VSS", "MultiVSS", "LLMReranker"]
+    )
+    parser.add_argument(
+        "--split",
+        default="test",
+        choices=["train", "val", "test", "human_generated_eval"],
+    )
 
     # Path settings
     parser.add_argument("--emb_dir", type=str, required=True)
@@ -37,16 +45,22 @@ def parse_args():
     parser.add_argument("--emb_model", type=str, default="text-embedding-ada-002")
 
     # LLMReranker specific settings
-    parser.add_argument("--llm_model", type=str, default="gpt-4-1106-preview", help='the LLM to rerank candidates.')
+    parser.add_argument(
+        "--llm_model",
+        type=str,
+        default="gpt-4-1106-preview",
+        help="the LLM to rerank candidates.",
+    )
     parser.add_argument("--llm_topk", type=int, default=10)
     parser.add_argument("--max_retry", type=int, default=3)
 
     # Prediction saving settings
     parser.add_argument("--save_pred", action="store_true")
-    parser.add_argument("--save_topk", type=int, default=500, help="topk predicted indices to save")
+    parser.add_argument(
+        "--save_topk", type=int, default=500, help="topk predicted indices to save"
+    )
 
     return parser.parse_args()
-
 
 
 if __name__ == "__main__":
@@ -56,11 +70,13 @@ if __name__ == "__main__":
     )
     args = merge_args(args, default_args)
 
-    query_emb_surfix = f'_{args.split}' if args.split == 'human_generated_eval' else ''
-    args.query_emb_dir = osp.join(args.emb_dir, args.dataset, args.emb_model, f"query{query_emb_surfix}")
+    query_emb_surfix = f"_{args.split}" if args.split == "human_generated_eval" else ""
+    args.query_emb_dir = osp.join(
+        args.emb_dir, args.dataset, args.emb_model, f"query{query_emb_surfix}"
+    )
     args.node_emb_dir = osp.join(args.emb_dir, args.dataset, args.emb_model, "doc")
     args.chunk_emb_dir = osp.join(args.emb_dir, args.dataset, args.emb_model, "chunk")
-    surfix = args.llm_model if args.model == 'LLMReranker' else args.emb_model
+    surfix = args.llm_model if args.model == "LLMReranker" else args.emb_model
     output_dir = osp.join(args.output_dir, "eval", args.dataset, args.model, surfix)
 
     os.makedirs(output_dir, exist_ok=True)
@@ -77,7 +93,9 @@ if __name__ == "__main__":
     )
 
     kb = load_skb(args.dataset)
-    qa_dataset = load_qa(args.dataset, human_generated_eval=args.split == 'human_generated_eval')
+    qa_dataset = load_qa(
+        args.dataset, human_generated_eval=args.split == "human_generated_eval"
+    )
     model = get_model(args, kb)
 
     split_idx = qa_dataset.get_idx_split(test_ratio=args.test_ratio)
@@ -107,7 +125,8 @@ if __name__ == "__main__":
 
     indices = split_idx[args.split].tolist()
 
-    for idx in tqdm(indices):
+    # for idx in tqdm(indices):
+    for idx in tqdm(indices[:5]):
         if idx in existing_idx:
             continue
         query, query_id, answer_ids, meta_info = qa_dataset[idx]
@@ -119,7 +138,7 @@ if __name__ == "__main__":
         result["idx"], result["query_id"] = idx, query_id
         result["pred_rank"] = torch.LongTensor(list(pred_dict.keys()))[
             torch.argsort(torch.tensor(list(pred_dict.values())), descending=True)[
-                :args.save_topk
+                : args.save_topk
             ]
         ].tolist()
 
